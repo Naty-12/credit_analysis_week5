@@ -1,0 +1,58 @@
+# Ignore data folders
+/data/
+!data/.gitkeep
+
+# Ignore model artifacts
+/models/
+*.pkl
+*.joblib
+*.h5
+*.model
+*.pt
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignore environment files
+.env
+.venv/
+venv/
+env/
+*.env
+
+# Ignore logs and temp files
+*.log
+*.tmp
+*.bak
+*.swp
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore IDE/editor folders
+.vscode/
+.idea/
+
+# Ignore MLflow artifacts
+mlruns/
+
+# Ignore compiled notebooks
+*.nbconvert.ipynb
+
+# Ignore zipped model files
+*.zip
+*.tar.gz
+
+# Ignore test coverage files
+coverage.xml
+*.cover
+htmlcov/
+
+# Ignore CI/CD secrets
+secrets.yaml
