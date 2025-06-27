@@ -91,7 +91,7 @@ def preprocess_data(raw_df, reference_date):
     categorical_features = ['CountryCode', 'CurrencyCode', 'ChannelId']
     numerical_features = [
          'Amount_sum', 'Amount_mean', 'Amount_std',
-        'Amount_min', 'Amount_max', 'Amount_count', 'Value_sum', 'Value_mean']
+        'Amount_min', 'Amount_max', 'Amount_count', 'Value_sum', 'Value_mean','Frequency','Recency']
 
     # Step 4: Apply pipeline
     pipeline = build_feature_pipeline(categorical_features, numerical_features)
@@ -105,7 +105,7 @@ def preprocess_data(raw_df, reference_date):
     processed_df = pd.DataFrame(processed_array,columns=feature_names)
 
     # Reattach CustomerId
-    extra_vars = customer_features_df[['Frequency','AvgTransactionHour', 'MostFrequentDayOfWeek','Recency','AccountFrequency']].reset_index(drop=True)
+    extra_vars = customer_features_df[['AvgTransactionHour', 'MostFrequentDayOfWeek','AccountFrequency']].reset_index(drop=True)
     customer_ids = customer_features_df[['CustomerId']].reset_index(drop=True)
     final_df = pd.concat([customer_ids, processed_df, extra_vars], axis=1)
     return final_df
