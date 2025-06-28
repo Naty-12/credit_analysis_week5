@@ -1,4 +1,15 @@
-# Project Structure
+## Project Overview
+
+This project aims to develop a robust credit scoring system for Bati Bank’s new buy-now-pay-later service in partnership with an eCommerce platform. By leveraging customer behavioral data, we will predict credit risk, assign credit scores, and recommend optimal loan terms, all while ensuring compliance with Basel II regulatory standards.
+
+## Objectives
+
+- Define a proxy credit risk variable to classify customers as high risk or low risk using behavioral RFM data.
+- Select and validate observable features that strongly predict the proxy credit risk variable.
+- Develop a model to estimate the probability of default (risk probability) for new customers.
+- Transform the risk probability into a standardized credit score to assess creditworthiness.
+
+## Project Structure
 ``` 
 credit-risk-model/
 ├── .github/workflows/ci.yml   # For CI/CD
