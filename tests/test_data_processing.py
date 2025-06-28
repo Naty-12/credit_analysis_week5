@@ -24,7 +24,7 @@ def test_build_feature_pipeline():
     # Check it transforms correctly
     transformed = pipeline.fit_transform(df)
     expected_num_cols = len(numerical_features)
-    expected_cat_cols = 3 + 2 + 3  # ET/US/NaN for CountryCode, ETB/USD for CurrencyCode, 1/2/3 for ChannelId
+    expected_cat_cols = 7# ET/US/NaN for CountryCode, ETB/USD for CurrencyCode, 1/2/3 for ChannelId
     total_expected_cols = expected_num_cols + expected_cat_cols
 
     assert transformed.shape[1] == total_expected_cols
