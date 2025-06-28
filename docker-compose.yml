@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # 1. FastAPI API Service
+  api:
+    build: . # Build from the Dockerfile in the current directory
+    container_name: credit-risk-api
+    ports:
+      - "8000:8000" # Map host port 8000 to container port 8000
+    environment:
+      # MLFLOW_TRACKING_URI points to the MLflow service name within the Docker network
+      - MLFLOW_TRACKING_URI=http://mlflow-server:5000
+    depends_on:
+      - mlflow-server # Ensure mlflow-server starts before the API service
+    volumes:
+      # Mount the 'models' directory to access saved preprocessor and feature names
+      - ./models:/app/models
+      # Mount your data directories if needed by the API (e.g., if it reads config files)
+      # - ./data:/app/data
+
+  # 2. MLflow Tracking Server Service
+  mlflow-server:
+    image: benmezger/mlflow:latest # Using a common MLflow Docker image
+    # You could also build your own MLflow image if you have specific dependencies
+    # build:
+    #   context: ./mlflow_docker # Assuming your custom MLflow Dockerfile is here
+    container_name: mlflow-tracking-server
+    ports:
+      - "5000:5000" # Map host port 5000 to container port 5000 (for UI access)
+    environment:
+      # Use a SQLite database for simplicity (will be in the `mlruns` volume)
+      - MLFLOW_BACKEND_STORE_URI=sqlite:///mlruns/mlruns.db
+      # Specify where artifacts will be stored (relative to the container's working directory)
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=/mlruns
+    volumes:
+      # Persist MLflow data (tracking DB and artifacts) to a local folder
+      - ./mlruns:/mlruns # This mounts the ./mlruns folder on your host to /mlruns in the container
