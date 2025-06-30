@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.compose import ColumnTransformer
 from src.data_processing import build_feature_pipeline
 
+
 def test_build_feature_pipeline():
     # Sample data
     df = pd.DataFrame({
@@ -24,7 +25,6 @@ def test_build_feature_pipeline():
     # Check it transforms correctly
     transformed = pipeline.fit_transform(df)
     expected_num_cols = len(numerical_features)
-    expected_cat_cols = 7# ET/US/NaN for CountryCode, ETB/USD for CurrencyCode, 1/2/3 for ChannelId
+    expected_cat_cols = 7
     total_expected_cols = expected_num_cols + expected_cat_cols
-
     assert transformed.shape[1] == total_expected_cols
