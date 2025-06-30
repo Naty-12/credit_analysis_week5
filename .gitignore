@@ -2,13 +2,7 @@
 /data/
 !data/.gitkeep
 
-# Ignore model artifacts
-/models/
-*.pkl
-*.joblib
-*.h5
-*.model
-*.pt
+
 
 # Ignore Jupyter Notebook checkpoints
 .ipynb_checkpoints/
