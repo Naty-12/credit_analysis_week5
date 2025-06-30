@@ -271,8 +271,7 @@ async def predict(transactions: List[Transaction]):
         )
 
         print(
-            f"DEBUG: transform_input columns for pipeline:{transform_input.
-                                                           columns.tolist()}"
+            f"DEBUG: pipeline:{transform_input.columns.tolist()}"
         )
         print(f"DEBUG: transform_input dtypes:\n{transform_input.dtypes}")
         print(f"DEBUG: transform_input head:\n{transform_input.head()}")
