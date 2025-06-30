@@ -27,3 +27,4 @@ joblib>=1.2.0
 
 # Notebook support
 ipykernel>=6.16.0
+httpx>=0.23
