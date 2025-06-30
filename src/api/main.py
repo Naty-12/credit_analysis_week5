@@ -283,8 +283,7 @@ async def predict(transactions: List[Transaction]):
             columns=feature_pipeline.get_feature_names_out()
             )
         print(
-            f"DEBUG: transformed_df columns after pipeline: {transformed_df.
-                                                             columns.tolist()}"
+            f"DEBUG: transformpipeline: {transformed_df.columns.tolist()}"
         )
         print(f"DEBUG: transformed_df shape: {transformed_df.shape}")
         print(f"DEBUG: transformed_df head:\n{transformed_df.head()}")
