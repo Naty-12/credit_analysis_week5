@@ -249,9 +249,9 @@ async def predict(transactions: List[Transaction]):
         aggregator = CustomerAggregator(reference_date)
         customer_features_df = aggregator.transform(time_features_df)
         print(
-            f"DEBUG: customer_features_df columns: {customer_features_df.
-                                                    columns.tolist()}"
-        )
+            f"DEBUG: customer_features_df columns: "
+            f"{customer_features_df.columns.tolist()}"
+            )
         print(f"DEBUG: customer_features_df head:\n{customer_features_df.head()}")
         # Check for NaN in Amount_std after aggregation, especially for single rows
         if "Amount_std" in customer_features_df.columns:
