@@ -1,10 +1,10 @@
 import pandas as pd
-import numpy as np
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.compose import ColumnTransformer
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
 
 # Custom transformer for extracting time-based features from transactions
 class TransactionFeatureExtractor(BaseEstimator, TransformerMixin):
@@ -13,12 +13,12 @@ class TransactionFeatureExtractor(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         df = X.copy()
-        df['TransactionHour'] = df['TransactionStartTime'].dt.hour
-        df['TransactionDay'] = df['TransactionStartTime'].dt.day
-        df['TransactionMonth'] = df['TransactionStartTime'].dt.month
-        df['TransactionDayOfWeek'] = df['TransactionStartTime'].dt.dayofweek
-        df['TransactionWeekend'] = df['TransactionDayOfWeek'].isin([5, 6]).astype(int)
-        df['TransactionYear'] = df['TransactionStartTime'].dt.year
+        df["TransactionHour"] = df["TransactionStartTime"].dt.hour
+        df["TransactionDay"] = df["TransactionStartTime"].dt.day
+        df["TransactionMonth"] = df["TransactionStartTime"].dt.month
+        df["TransactionDayOfWeek"] = df["TransactionStartTime"].dt.dayofweek
+        df["TransactionWeekend"] = df["TransactionDayOfWeek"].isin([5, 6]).astype(int)
+        df["TransactionYear"] = df["TransactionStartTime"].dt.year
         return df
 
 
@@ -34,23 +34,38 @@ class CustomerAggregator(BaseEstimator, TransformerMixin):
         df = X.copy()
 
         # Group by CustomerId
-        agg = df.groupby('CustomerId').agg(
-            Recency=('TransactionStartTime', lambda x: (self.reference_date - x.max()).days),
-            Frequency=('TransactionId', 'count'),
-            AccountFrequency=('AccountId', pd.Series.nunique),
-            Amount_sum=('Amount', 'sum'),
-            Amount_mean=('Amount', 'mean'),
-            Amount_std=('Amount', 'std'),
-            Amount_min=('Amount', 'min'),
-            Amount_max=('Amount', 'max'),
-            Amount_count=('Amount', 'count'),
-            Value_sum=('Value', 'sum'),
-            Value_mean=('Value', 'mean'),
-            AvgTransactionHour=('TransactionHour', 'mean'),
-            MostFrequentDayOfWeek=('TransactionDayOfWeek', lambda x: x.mode().iloc[0] if not x.mode().empty else -1),
-            CountryCode=('CountryCode', lambda x: x.mode().iloc[0] if not x.mode().empty else 'Unknown'),
-            CurrencyCode=('CurrencyCode', lambda x: x.mode().iloc[0] if not x.mode().empty else 'Unknown'),
-            ChannelId=('ChannelId', lambda x: x.mode().iloc[0] if not x.mode().empty else 'Unknown')
+        agg = df.groupby("CustomerId").agg(
+            Recency=(
+                "TransactionStartTime",
+                lambda x: (self.reference_date - x.max()).days,
+            ),
+            Frequency=("TransactionId", "count"),
+            AccountFrequency=("AccountId", pd.Series.nunique),
+            Amount_sum=("Amount", "sum"),
+            Amount_mean=("Amount", "mean"),
+            Amount_std=("Amount", "std"),
+            Amount_min=("Amount", "min"),
+            Amount_max=("Amount", "max"),
+            Amount_count=("Amount", "count"),
+            Value_sum=("Value", "sum"),
+            Value_mean=("Value", "mean"),
+            AvgTransactionHour=("TransactionHour", "mean"),
+            MostFrequentDayOfWeek=(
+                "TransactionDayOfWeek",
+                lambda x: x.mode().iloc[0] if not x.mode().empty else -1,
+            ),
+            CountryCode=(
+                "CountryCode",
+                lambda x: x.mode().iloc[0] if not x.mode().empty else "Unknown",
+            ),
+            CurrencyCode=(
+                "CurrencyCode",
+                lambda x: x.mode().iloc[0] if not x.mode().empty else "Unknown",
+            ),
+            ChannelId=(
+                "ChannelId",
+                lambda x: x.mode().iloc[0] if not x.mode().empty else "Unknown",
+            ),
         )
 
         agg.reset_index(inplace=True)
@@ -59,20 +74,23 @@ class CustomerAggregator(BaseEstimator, TransformerMixin):
 
 # Builds transformation pipeline for categorical and numerical columns
 def build_feature_pipeline(categorical_features, numerical_features):
-    cat_pipeline = Pipeline([
-        ('imputer', SimpleImputer(strategy='most_frequent')),
-        ('encoder', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
-    ])
+    cat_pipeline = Pipeline(
+        [
+            ("imputer", SimpleImputer(strategy="most_frequent")),
+            ("encoder", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
+        ]
+    )
 
-    num_pipeline = Pipeline([
-        ('imputer', SimpleImputer(strategy='mean')),
-        ('scaler', StandardScaler())
-    ])
+    num_pipeline = Pipeline(
+        [("imputer", SimpleImputer(strategy="mean")), ("scaler", StandardScaler())]
+    )
 
-    full_pipeline = ColumnTransformer([
-        ('cat', cat_pipeline, categorical_features),
-        ('num', num_pipeline, numerical_features)
-    ])
+    full_pipeline = ColumnTransformer(
+        [
+            ("cat", cat_pipeline, categorical_features),
+            ("num", num_pipeline, numerical_features),
+        ]
+    )
 
     return full_pipeline
 
@@ -88,10 +106,19 @@ def preprocess_data(raw_df, reference_date):
     customer_features_df = aggregator.fit_transform(time_features_df)
 
     # Step 3: Define feature columns
-    categorical_features = ['CountryCode', 'CurrencyCode', 'ChannelId']
+    categorical_features = ["CountryCode", "CurrencyCode", "ChannelId"]
     numerical_features = [
-         'Amount_sum', 'Amount_mean', 'Amount_std',
-        'Amount_min', 'Amount_max', 'Amount_count', 'Value_sum', 'Value_mean','Frequency','Recency']
+        "Amount_sum",
+        "Amount_mean",
+        "Amount_std",
+        "Amount_min",
+        "Amount_max",
+        "Amount_count",
+        "Value_sum",
+        "Value_mean",
+        "Frequency",
+        "Recency",
+    ]
 
     # Step 4: Apply pipeline
     pipeline = build_feature_pipeline(categorical_features, numerical_features)
@@ -102,64 +129,12 @@ def preprocess_data(raw_df, reference_date):
 
     processed_array = pipeline.fit_transform(feature_data)
     feature_names = pipeline.get_feature_names_out()
-    processed_df = pd.DataFrame(processed_array,columns=feature_names)
+    processed_df = pd.DataFrame(processed_array, columns=feature_names)
 
     # Reattach CustomerId
-    extra_vars = customer_features_df[['AvgTransactionHour', 'MostFrequentDayOfWeek','AccountFrequency']].reset_index(drop=True)
-    customer_ids = customer_features_df[['CustomerId']].reset_index(drop=True)
+    extra_vars = customer_features_df[
+        ["AvgTransactionHour", "MostFrequentDayOfWeek", "AccountFrequency"]
+    ].reset_index(drop=True)
+    customer_ids = customer_features_df[["CustomerId"]].reset_index(drop=True)
     final_df = pd.concat([customer_ids, processed_df, extra_vars], axis=1)
     return final_df
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
