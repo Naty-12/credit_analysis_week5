@@ -1,16 +1,17 @@
 import sys
 import os
 import pytest
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from fastapi.testclient import TestClient
 from src.api.main import app  # adjust import path if needed
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 
 @pytest.fixture(scope="module")
 def client():
     # Use a context manager to ensure startup events run
     with TestClient(app) as c:
         yield c
+
 
 def test_predict_single_transaction(client):
     # Test a valid prediction request returns 200 and expected keys
@@ -32,6 +33,7 @@ def test_predict_single_transaction(client):
     assert isinstance(json_response, list)
     assert "CustomerId" in json_response[0]
     assert "risk_probability" in json_response[0]
+
 
 def test_predict_invalid_data(client):
     # Test missing required field 'Amount' results in 422 validation error
