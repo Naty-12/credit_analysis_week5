@@ -1,19 +1,25 @@
-import pandas as pd
-import numpy as np
-import joblib # To save/load preprocessors
+import os  # For creating directories
+
+import joblib  # To save/load preprocessors
 import mlflow
 import mlflow.sklearn
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.compose import ColumnTransformer
+import numpy as np
+import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
+from sklearn.impute import SimpleImputer
 from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+    accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
 )
-import os # For creating directories
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
 
 class TransactionFeatureExtractor(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
@@ -22,20 +28,20 @@ class TransactionFeatureExtractor(BaseEstimator, TransformerMixin):
     def transform(self, X):
         df = X.copy()
         # Ensure 'TransactionStartTime' is datetime type for .dt accessor
-        df['TransactionStartTime'] = pd.to_datetime(df['TransactionStartTime'])
-        df['TransactionHour'] = df['TransactionStartTime'].dt.hour
-        df['TransactionDay'] = df['TransactionStartTime'].dt.day
-        df['TransactionMonth'] = df['TransactionStartTime'].dt.month
-        df['TransactionDayOfWeek'] = df['TransactionStartTime'].dt.dayofweek
-        df['TransactionWeekend'] = df['TransactionDayOfWeek'].isin([5, 6]).astype(int)
-        df['TransactionYear'] = df['TransactionStartTime'].dt.year
+        df["TransactionStartTime"] = pd.to_datetime(df["TransactionStartTime"])
+        df["TransactionHour"] = df["TransactionStartTime"].dt.hour
+        df["TransactionDay"] = df["TransactionStartTime"].dt.day
+        df["TransactionMonth"] = df["TransactionStartTime"].dt.month
+        df["TransactionDayOfWeek"] = df["TransactionStartTime"].dt.dayofweek
+        df["TransactionWeekend"] = df["TransactionDayOfWeek"].isin([5, 6]).astype(int)
+        df["TransactionYear"] = df["TransactionStartTime"].dt.year
         return df
 
 
 # Aggregates customer-level statistics from transaction data
 class CustomerAggregator(BaseEstimator, TransformerMixin):
     def __init__(self, reference_date):
-        self.reference_date = pd.Timestamp(reference_date) # Ensure it's a Timestamp
+        self.reference_date = pd.Timestamp(reference_date)  # Ensure it's a Timestamp
 
     def fit(self, X, y=None):
         return self
@@ -44,23 +50,40 @@ class CustomerAggregator(BaseEstimator, TransformerMixin):
         df = X.copy()
 
         # Group by CustomerId
-        agg = df.groupby('CustomerId').agg(
-            Recency=('TransactionStartTime', lambda x: (self.reference_date - x.max()).days if not x.empty else np.nan),
-            Frequency=('TransactionId', 'count'),
-            AccountFrequency=('AccountId', pd.Series.nunique),
-            Amount_sum=('Amount', 'sum'),
-            Amount_mean=('Amount', 'mean'),
-            Amount_std=('Amount', 'std'),
-            Amount_min=('Amount', 'min'),
-            Amount_max=('Amount', 'max'),
-            Amount_count=('Amount', 'count'),
-            Value_sum=('Value', 'sum'),
-            Value_mean=('Value', 'mean'),
-            AvgTransactionHour=('TransactionHour', 'mean'),
-            MostFrequentDayOfWeek=('TransactionDayOfWeek', lambda x: x.mode().iloc[0] if not x.mode().empty else -1),
-            CountryCode=('CountryCode', lambda x: x.mode().iloc[0] if not x.mode().empty else 'Unknown'),
-            CurrencyCode=('CurrencyCode', lambda x: x.mode().iloc[0] if not x.mode().empty else 'Unknown'),
-            ChannelId=('ChannelId', lambda x: x.mode().iloc[0] if not x.mode().empty else 'Unknown')
+        agg = df.groupby("CustomerId").agg(
+            Recency=(
+                "TransactionStartTime",
+                lambda x: (
+                    (self.reference_date - x.max()).days if not x.empty else np.nan
+                ),
+            ),
+            Frequency=("TransactionId", "count"),
+            AccountFrequency=("AccountId", pd.Series.nunique),
+            Amount_sum=("Amount", "sum"),
+            Amount_mean=("Amount", "mean"),
+            Amount_std=("Amount", "std"),
+            Amount_min=("Amount", "min"),
+            Amount_max=("Amount", "max"),
+            Amount_count=("Amount", "count"),
+            Value_sum=("Value", "sum"),
+            Value_mean=("Value", "mean"),
+            AvgTransactionHour=("TransactionHour", "mean"),
+            MostFrequentDayOfWeek=(
+                "TransactionDayOfWeek",
+                lambda x: x.mode().iloc[0] if not x.mode().empty else -1,
+            ),
+            CountryCode=(
+                "CountryCode",
+                lambda x: x.mode().iloc[0] if not x.mode().empty else "Unknown",
+            ),
+            CurrencyCode=(
+                "CurrencyCode",
+                lambda x: x.mode().iloc[0] if not x.mode().empty else "Unknown",
+            ),
+            ChannelId=(
+                "ChannelId",
+                lambda x: x.mode().iloc[0] if not x.mode().empty else "Unknown",
+            ),
         )
         agg.reset_index(inplace=True)
         return agg
@@ -68,20 +91,24 @@ class CustomerAggregator(BaseEstimator, TransformerMixin):
 
 # Builds transformation pipeline for categorical and numerical columns
 def build_feature_pipeline(categorical_features, numerical_features):
-    cat_pipeline = Pipeline([
-        ('imputer', SimpleImputer(strategy='most_frequent')),
-        ('encoder', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
-    ])
+    cat_pipeline = Pipeline(
+        [
+            ("imputer", SimpleImputer(strategy="most_frequent")),
+            ("encoder", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
+        ]
+    )
 
-    num_pipeline = Pipeline([
-        ('imputer', SimpleImputer(strategy='mean')),
-        ('scaler', StandardScaler())
-    ])
+    num_pipeline = Pipeline(
+        [("imputer", SimpleImputer(strategy="mean")), ("scaler", StandardScaler())]
+    )
 
-    full_pipeline = ColumnTransformer([
-        ('cat', cat_pipeline, categorical_features),
-        ('num', num_pipeline, numerical_features)
-    ], remainder='passthrough') # Keep other columns if not transformed by these pipes
+    full_pipeline = ColumnTransformer(
+        [
+            ("cat", cat_pipeline, categorical_features),
+            ("num", num_pipeline, numerical_features),
+        ],
+        remainder="passthrough",
+    )  # Keep other columns if not transformed by these pipes
 
     return full_pipeline
 
@@ -97,20 +124,32 @@ def preprocess_data_and_save_pipeline(raw_df, reference_date):
     customer_features_df = aggregator.fit_transform(time_features_df)
 
     # Step 3: Define feature columns
-    categorical_features = ['CountryCode', 'CurrencyCode', 'ChannelId']
+    categorical_features = ["CountryCode", "CurrencyCode", "ChannelId"]
     numerical_features = [
-        'Amount_sum', 'Amount_mean', 'Amount_std',
-        'Amount_min', 'Amount_max', 'Amount_count', 'Value_sum', 'Value_mean'
+        "Amount_sum",
+        "Amount_mean",
+        "Amount_std",
+        "Amount_min",
+        "Amount_max",
+        "Amount_count",
+        "Value_sum",
+        "Value_mean",
     ]
 
     # Step 4: Build and FIT the ColumnTransformer pipeline
-    feature_transformer_pipeline = build_feature_pipeline(categorical_features, numerical_features)
+    feature_transformer_pipeline = build_feature_pipeline(
+        categorical_features, numerical_features
+    )
 
     # Prepare data for the ColumnTransformer
-    feature_data_for_transform = customer_features_df[categorical_features + numerical_features]
+    feature_data_for_transform = customer_features_df[
+        categorical_features + numerical_features
+    ]
 
     # Fit and transform the data using the ColumnTransformer
-    processed_array = feature_transformer_pipeline.fit_transform(feature_data_for_transform)
+    processed_array = feature_transformer_pipeline.fit_transform(
+        feature_data_for_transform
+    )
 
     # Get feature names from the fitted ColumnTransformer
     # This will give names like 'cat__CountryCode_256', 'num__Amount_sum', etc.
@@ -118,64 +157,101 @@ def preprocess_data_and_save_pipeline(raw_df, reference_date):
     processed_df = pd.DataFrame(processed_array, columns=transformed_feature_names)
 
     # Reattach CustomerId and extra_vars
-    extra_vars = customer_features_df[['Frequency', 'AvgTransactionHour', 'MostFrequentDayOfWeek', 'Recency', 'AccountFrequency']].reset_index(drop=True)
-    customer_ids = customer_features_df[['CustomerId']].reset_index(drop=True)
+    extra_vars = customer_features_df[
+        [
+            "Frequency",
+            "AvgTransactionHour",
+            "MostFrequentDayOfWeek",
+            "Recency",
+            "AccountFrequency",
+        ]
+    ].reset_index(drop=True)
+    customer_ids = customer_features_df[["CustomerId"]].reset_index(drop=True)
 
     # Final DataFrame for training
     final_df = pd.concat([customer_ids, processed_df, extra_vars], axis=1)
 
     # --- Save the fitted pipeline and final feature names ---
-    models_dir = 'models'
-    os.makedirs(models_dir, exist_ok=True) # Create 'models' directory if it doesn't exist
+    models_dir = "models"
+    os.makedirs(
+        models_dir, exist_ok=True
+    )  # Create 'models' directory if it doesn't exist
 
-    joblib.dump(feature_transformer_pipeline, os.path.join(models_dir, 'fitted_feature_pipeline.pkl'))
-    print(f"✅ Fitted preprocessing pipeline saved to {os.path.join(models_dir, 'fitted_feature_pipeline.pkl')}")
+    joblib.dump(
+        feature_transformer_pipeline,
+        os.path.join(models_dir, "fitted_feature_pipeline.pkl"),
+    )
+    print(
+        f"✅pipeline saved to {os.path.join(models_dir, 'fitted_feature_pipeline.pkl')}"
+    )
 
     # Combine names from the transformed features and the extra_vars
-    final_model_feature_names = transformed_feature_names.tolist() + extra_vars.columns.tolist()
-    joblib.dump(final_model_feature_names, os.path.join(models_dir, 'final_model_feature_names.pkl'))
-    print(f"✅ Final model feature names saved to {os.path.join(models_dir, 'final_model_feature_names.pkl')}")
+    final_model_feature_names = (
+        transformed_feature_names.tolist() + extra_vars.columns.tolist()
+    )
+    joblib.dump(
+        final_model_feature_names,
+        os.path.join(models_dir, "final_model_feature_names.pkl"),
+    )
+    print(
+        f"✅names saved to {os.path.join(models_dir, 'final_model_feature_names.pkl')}"
+    )
     # --------------------------------------------------------
 
-    return final_df, feature_transformer_pipeline # Return the fitted pipeline along with the DataFrame
+    return (
+        final_df,
+        feature_transformer_pipeline,
+    )  # Return the fitted pipeline along with the DataFrame
 
 
 try:
-    raw_transaction_data = pd.read_csv("C:/Users/techin/credit_analysis_week5/data/raw/data.csv")
+    raw_transaction_data = pd.read_csv(
+        "C:/Users/techin/credit_analysis_week5/data/raw/data.csv"
+    )
     # Ensure TransactionStartTime is datetime for extraction
-    raw_transaction_data['TransactionStartTime'] = pd.to_datetime(raw_transaction_data['TransactionStartTime'])
+    raw_transaction_data["TransactionStartTime"] = pd.to_datetime(
+        raw_transaction_data["TransactionStartTime"]
+    )
     print("✅ Raw transaction data loaded.")
 except FileNotFoundError:
-    print("Error: 'data/raw/raw_transactions.csv' not found. Please provide the correct path to your raw data.")
-    exit() # Exit if raw data not found
+    print(
+        "Error: 'data/raw/raw_transactions.csv' not found. "
+    )
+    exit()  # Exit if raw data not found
 
 # --- 3. Define your reference date for Recency ---
 
-# TRAINING_REFERENCE_DATE = pd.Timestamp('2024-01-01') # IMPORTANT: Adjust this to your actual training reference date!
-# Or, if it's based on the latest transaction in the training data:
-TRAINING_REFERENCE_DATE = raw_transaction_data['TransactionStartTime'].max()
+TRAINING_REFERENCE_DATE = raw_transaction_data["TransactionStartTime"].max()
 
 
 # --- 4. Preprocess the data for training and save the fitted pipeline ---
 print("🚀 Starting data preprocessing...")
-processed_df_for_training, fitted_preprocessor_for_training = \
+processed_df_for_training, fitted_preprocessor_for_training = (
     preprocess_data_and_save_pipeline(raw_transaction_data, TRAINING_REFERENCE_DATE)
+)
 print("✅ Data preprocessing complete.")
 
 
 try:
     # Load your labels (CustomerId and is_high_risk)
-    labels_df = pd.read_csv("C:/Users/techin/credit_analysis_week5/data/processed/cleaned_risk.csv") # Adjust path to your labels
+    labels_df = pd.read_csv(
+        "C:/Users/techin/credit_analysis_week5/data/processed/cleaned_risk.csv"
+    )  # Adjust path to your labels
     # Merge labels with the processed features
-    merged_df = pd.merge(processed_df_for_training, labels_df, on='CustomerId', how='left')
+    merged_df = pd.merge(
+        processed_df_for_training, labels_df, on="CustomerId", how="left"
+    )
     # Handle potential NaNs if some customers are not labeled
-    merged_df.dropna(subset=['is_high_risk'], inplace=True)
-    merged_df['is_high_risk'] = merged_df['is_high_risk'].astype(int) # Ensure target is int
+    merged_df.dropna(subset=["is_high_risk"], inplace=True)
+    merged_df["is_high_risk"] = merged_df["is_high_risk"].astype(
+        int
+    )  # Ensure target is int
     print("✅ Labels merged with processed data.")
 except FileNotFoundError:
-    print("Error: 'data/processed/customer_labels.csv' not found. Please provide path to your customer labels.")
+    print(
+        "Error: 'data/processed/customer_labels.csv' not found."
+    )
     # If `is_high_risk` is part of `raw_transaction_data` and needs to be aggregated:
-    # You'll need to modify `CustomerAggregator` to handle it or ensure it's propagated correctly.
     exit()
 
 # Prepare features (X) and target (y) for model training
@@ -185,13 +261,13 @@ y_train_final = merged_df["is_high_risk"]
 
 # Verify that the column names in X_train_final match what your model expects
 # This is why we saved `final_model_feature_names.pkl`
-expected_feature_names = joblib.load('models/final_model_feature_names.pkl')
+expected_feature_names = joblib.load("models/final_model_feature_names.pkl")
 if not list(X_train_final.columns) == expected_feature_names:
     print("❗ Warning: Feature names mismatch before training!")
     print("Expected:", expected_feature_names)
     print("Actual:", list(X_train_final.columns))
     # You might need to reorder or align columns here if they differ.
-    X_train_final = X_train_final[expected_feature_names] # Force order/presence
+    X_train_final = X_train_final[expected_feature_names]  # Force order/presence
 else:
     print("✅ Feature names match expected order for training.")
 
@@ -204,10 +280,7 @@ print("✅ Data split into training and testing sets.")
 
 # --- 7. Define and train your model ---
 best_rf = RandomForestClassifier(
-    n_estimators=100,
-    max_depth=10,
-    min_samples_split=2,
-    random_state=42
+    n_estimators=100, max_depth=10, min_samples_split=2, random_state=42
 )
 print("🚀 Training RandomForestClassifier...")
 best_rf.fit(X_train, y_train)
@@ -222,7 +295,7 @@ metrics = {
     "precision": precision_score(y_test, y_pred),
     "recall": recall_score(y_test, y_pred),
     "f1_score": f1_score(y_test, y_pred),
-    "roc_auc": roc_auc_score(y_test, y_proba)
+    "roc_auc": roc_auc_score(y_test, y_proba),
 }
 print("✅ Model evaluated.")
 for metric_name, value in metrics.items():
@@ -236,7 +309,7 @@ with mlflow.start_run(run_name="RandomForest_FullPipeline_Model"):
     mlflow.sklearn.log_model(
         sk_model=best_rf,
         artifact_path="model",
-        registered_model_name="credit_risk_model"
+        registered_model_name="credit_risk_model",
     )
 print("✅ Model logged to MLflow successfully.")
 
